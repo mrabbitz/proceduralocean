@@ -14,7 +14,10 @@ import Ocean from './geometry/Ocean';
 const controls = {
   tesselations: 5,
   'Load Scene': loadScene, // A function pointer, essentially
+  wireframe: false,
 };
+
+let time: number = 0.0;
 
 let icosphere: Icosphere;
 let square: Square;
@@ -46,6 +49,7 @@ function main() {
   const gui = new DAT.GUI();
   gui.add(controls, 'tesselations', 0, 8).step(1);
   gui.add(controls, 'Load Scene');
+  gui.add(controls, 'wireframe');
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -76,10 +80,26 @@ function main() {
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/flat-frag.glsl')),
   ]);
 
+  const oceanShaders = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/ocean-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/ocean-frag.glsl')),
+  ]);
+
   // This function will be called every frame
   function tick() {
     camera.update();
     stats.begin();
+    lambert.setTime(time);
+    flat.setTime(time);
+    oceanShaders.setTime(time++);
+    if (controls.wireframe)
+    {
+      oceanShaders.setWidthWireframe(0.006);
+    }
+    else
+    {
+      oceanShaders.setWidthWireframe(1.0);
+    }
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     if(controls.tesselations != prevTesselations)
@@ -92,7 +112,11 @@ function main() {
     //   icosphere,
     //   // square,
     // ]);
-    renderer.render(camera, flat, [
+    // renderer.render(camera, flat, [
+    //   ocean
+    // ]);
+    oceanShaders.setTextureMap(ocean.texture, ocean.texWidth, ocean.texHeight);
+    renderer.render(camera, oceanShaders, [
       ocean
     ]);
     stats.end();

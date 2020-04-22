@@ -24,11 +24,15 @@ class ShaderProgram {
   attrPos: number;
   attrNor: number;
   attrCol: number;
+  attrBcCoord: number;
 
   unifModel: WebGLUniformLocation;
   unifModelInvTr: WebGLUniformLocation;
   unifViewProj: WebGLUniformLocation;
   unifColor: WebGLUniformLocation;
+  unifTime: WebGLUniformLocation;
+  unifWidthWireframe: WebGLUniformLocation;
+  unifTextureMap: WebGLUniformLocation;
 
   constructor(shaders: Array<Shader>) {
     this.prog = gl.createProgram();
@@ -44,16 +48,52 @@ class ShaderProgram {
     this.attrPos = gl.getAttribLocation(this.prog, "vs_Pos");
     this.attrNor = gl.getAttribLocation(this.prog, "vs_Nor");
     this.attrCol = gl.getAttribLocation(this.prog, "vs_Col");
-    this.unifModel      = gl.getUniformLocation(this.prog, "u_Model");
-    this.unifModelInvTr = gl.getUniformLocation(this.prog, "u_ModelInvTr");
-    this.unifViewProj   = gl.getUniformLocation(this.prog, "u_ViewProj");
-    this.unifColor      = gl.getUniformLocation(this.prog, "u_Color");
+    this.attrBcCoord = gl.getAttribLocation(this.prog, "vs_BcCoord");
+    this.unifModel          = gl.getUniformLocation(this.prog, "u_Model");
+    this.unifModelInvTr     = gl.getUniformLocation(this.prog, "u_ModelInvTr");
+    this.unifViewProj       = gl.getUniformLocation(this.prog, "u_ViewProj");
+    this.unifColor          = gl.getUniformLocation(this.prog, "u_Color");
+    this.unifTime           = gl.getUniformLocation(this.prog, "u_Time");
+    this.unifWidthWireframe = gl.getUniformLocation(this.prog, "u_WidthWireframe");
+    this.unifTextureMap     = gl.getUniformLocation(this.prog, "u_TextureMap");
   }
 
   use() {
     if (activeProgram !== this.prog) {
       gl.useProgram(this.prog);
       activeProgram = this.prog;
+    }
+  }
+
+  setTime(t: number) {
+    this.use();
+    if (this.unifTime !== -1) {
+      gl.uniform1f(this.unifTime, t);
+    }
+  }
+
+  setWidthWireframe(w: number) {
+    this.use();
+    if (this.unifWidthWireframe !== -1) {
+      gl.uniform1f(this.unifWidthWireframe, w);
+    }
+  }
+
+  setTextureMap(image: Uint8Array, width: number, height: number) {
+    this.use();
+    if (this.unifTextureMap !== -1) {
+
+      let texture = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, image);
+  
+      gl.generateMipmap(gl.TEXTURE_2D);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST_MIPMAP_LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+
+      gl.uniform1i(this.unifTextureMap, 0);
     }
   }
 
@@ -103,11 +143,18 @@ class ShaderProgram {
       gl.vertexAttribPointer(this.attrCol, 4, gl.FLOAT, false, 0, 0);
     }
 
+    if (this.attrBcCoord != -1 && d.bindBcCoord()) {
+      gl.enableVertexAttribArray(this.attrBcCoord);
+      gl.vertexAttribPointer(this.attrBcCoord, 3, gl.FLOAT, false, 0, 0);
+    }
+
     d.bindIdx();
     gl.drawElements(d.drawMode(), d.elemCount(), gl.UNSIGNED_INT, 0);
 
     if (this.attrPos != -1) gl.disableVertexAttribArray(this.attrPos);
     if (this.attrNor != -1) gl.disableVertexAttribArray(this.attrNor);
+    if (this.attrCol != -1) gl.disableVertexAttribArray(this.attrCol);
+    if (this.attrBcCoord != -1) gl.disableVertexAttribArray(this.attrBcCoord);
   }
 };
 

@@ -7,6 +7,7 @@ import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
 import Camera from './Camera';
 import {setGL} from './globals';
 import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
+import Ocean from './geometry/Ocean';
 
 // Define an object with application parameters and button callbacks
 // This will be referred to by dat.GUI's functions that add GUI elements.
@@ -19,11 +20,17 @@ let icosphere: Icosphere;
 let square: Square;
 let prevTesselations: number = 5;
 
+let ocean: Ocean;
+
 function loadScene() {
   icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
   icosphere.create();
   square = new Square(vec3.fromValues(0, 0, 0));
   square.create();
+
+  ocean = new Ocean();
+  ocean.create();
+
 }
 
 function main() {
@@ -64,6 +71,11 @@ function main() {
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/lambert-frag.glsl')),
   ]);
 
+  const flat = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/flat-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/flat-frag.glsl')),
+  ]);
+
   // This function will be called every frame
   function tick() {
     camera.update();
@@ -76,9 +88,12 @@ function main() {
       icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, prevTesselations);
       icosphere.create();
     }
-    renderer.render(camera, lambert, [
-      icosphere,
-      // square,
+    // renderer.render(camera, lambert, [
+    //   icosphere,
+    //   // square,
+    // ]);
+    renderer.render(camera, flat, [
+      ocean
     ]);
     stats.end();
 

@@ -8,13 +8,16 @@ import Camera from './Camera';
 import {setGL} from './globals';
 import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 import Ocean from './geometry/Ocean';
+import Cube from './geometry/Cube';
 
 // Define an object with application parameters and button callbacks
 // This will be referred to by dat.GUI's functions that add GUI elements.
 const controls = {
   tesselations: 5,
   'Load Scene': loadScene, // A function pointer, essentially
-  wireframe: false,
+  Wireframe: false,
+  'Sea State': 1,
+  'Wind Direction': -30.0,
 };
 
 let time: number = 0.0;
@@ -25,6 +28,8 @@ let prevTesselations: number = 5;
 
 let ocean: Ocean;
 
+let cube: Cube;
+
 function loadScene() {
   icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
   icosphere.create();
@@ -33,6 +38,9 @@ function loadScene() {
 
   ocean = new Ocean();
   ocean.create();
+
+  cube = new Cube(vec3.fromValues(0, 0, 0));
+  cube.create();
 
 }
 
@@ -49,7 +57,9 @@ function main() {
   const gui = new DAT.GUI();
   gui.add(controls, 'tesselations', 0, 8).step(1);
   gui.add(controls, 'Load Scene');
-  gui.add(controls, 'wireframe');
+  gui.add(controls, 'Wireframe');
+  gui.add(controls, 'Sea State', 1, 6).step(1);
+  gui.add(controls, 'Wind Direction', -180, 180);
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -92,7 +102,7 @@ function main() {
     lambert.setTime(time);
     flat.setTime(time);
     oceanShaders.setTime(time++);
-    if (controls.wireframe)
+    if (controls.Wireframe)
     {
       oceanShaders.setWidthWireframe(0.006);
     }
@@ -100,6 +110,9 @@ function main() {
     {
       oceanShaders.setWidthWireframe(1.0);
     }
+    oceanShaders.setSeaState(controls["Sea State"]);
+    oceanShaders.setWindDirection(controls["Wind Direction"]);
+
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
     if(controls.tesselations != prevTesselations)
@@ -115,10 +128,20 @@ function main() {
     // renderer.render(camera, flat, [
     //   ocean
     // ]);
-    oceanShaders.setTextureMap(ocean.texture, ocean.texWidth, ocean.texHeight);
+    //oceanShaders.setTextureMap(ocean.texture, ocean.texWidth, ocean.texHeight);
+    gl.depthFunc(gl.LESS);  // use the default depth test
+    oceanShaders.setCubeMap(cube);
     renderer.render(camera, oceanShaders, [
       ocean
     ]);
+
+    // let our quad pass the depth test at 1.0
+    gl.depthFunc(gl.LEQUAL);
+    flat.setCubeMap(cube);
+    renderer.render(camera, flat, [
+      cube
+    ]);
+
     stats.end();
 
     // Tell the browser to call `tick` again whenever it renders a new frame

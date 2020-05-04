@@ -1,6 +1,7 @@
-import {vec4, mat4} from 'gl-matrix';
+import {vec3, vec4, mat4} from 'gl-matrix';
 import Drawable from './Drawable';
 import {gl} from '../../globals';
+import Cube from '../../geometry/Cube';
 
 var activeProgram: WebGLProgram = null;
 
@@ -25,14 +26,20 @@ class ShaderProgram {
   attrNor: number;
   attrCol: number;
   attrBcCoord: number;
+  attrUvCoord: number;
 
   unifModel: WebGLUniformLocation;
   unifModelInvTr: WebGLUniformLocation;
   unifViewProj: WebGLUniformLocation;
+  unifViewProjInv: WebGLUniformLocation;
   unifColor: WebGLUniformLocation;
   unifTime: WebGLUniformLocation;
   unifWidthWireframe: WebGLUniformLocation;
   unifTextureMap: WebGLUniformLocation;
+  unifSeaState: WebGLUniformLocation;
+  unifWindDir: WebGLUniformLocation;
+  unifEye: WebGLUniformLocation;
+  unifCubeMap: WebGLUniformLocation;
 
   constructor(shaders: Array<Shader>) {
     this.prog = gl.createProgram();
@@ -49,13 +56,20 @@ class ShaderProgram {
     this.attrNor = gl.getAttribLocation(this.prog, "vs_Nor");
     this.attrCol = gl.getAttribLocation(this.prog, "vs_Col");
     this.attrBcCoord = gl.getAttribLocation(this.prog, "vs_BcCoord");
+    this.attrUvCoord = gl.getAttribLocation(this.prog, "vs_UV");
     this.unifModel          = gl.getUniformLocation(this.prog, "u_Model");
     this.unifModelInvTr     = gl.getUniformLocation(this.prog, "u_ModelInvTr");
     this.unifViewProj       = gl.getUniformLocation(this.prog, "u_ViewProj");
+    this.unifViewProjInv    = gl.getUniformLocation(this.prog, "u_ViewProjInv");
     this.unifColor          = gl.getUniformLocation(this.prog, "u_Color");
     this.unifTime           = gl.getUniformLocation(this.prog, "u_Time");
     this.unifWidthWireframe = gl.getUniformLocation(this.prog, "u_WidthWireframe");
     this.unifTextureMap     = gl.getUniformLocation(this.prog, "u_TextureMap");
+    this.unifSeaState       = gl.getUniformLocation(this.prog, "u_SeaState");
+    this.unifWindDir        = gl.getUniformLocation(this.prog, "u_WindDirection");
+    this.unifEye            = gl.getUniformLocation(this.prog, "u_Eye");
+    this.unifCubeMap        = gl.getUniformLocation(this.prog, "u_CubeMap");
+
   }
 
   use() {
@@ -65,10 +79,56 @@ class ShaderProgram {
     }
   }
 
+  setCubeMap(cube: Cube) {
+    this.use();
+    if (this.unifCubeMap !== -1) {
+
+      let cubeMap = gl.createTexture();
+
+      gl.bindTexture(gl.TEXTURE_CUBE_MAP, cubeMap);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Z, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cube.backImg);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Z, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cube.frontImg);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_X, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cube.leftImg);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_X, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cube.rightImg);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_NEGATIVE_Y, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cube.botImg);
+      gl.texImage2D(gl.TEXTURE_CUBE_MAP_POSITIVE_Y, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, cube.topImg);
+  
+      gl.generateMipmap(gl.TEXTURE_CUBE_MAP);
+      gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+
+      // gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      // gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+
+      gl.activeTexture(gl.TEXTURE0);
+      gl.uniform1i(this.unifCubeMap, 0);
+    }
+  }
+
+  setEye(eye: vec3) {
+    this.use();
+    if(this.unifEye !== -1) {
+      gl.uniform3f(this.unifEye, eye[0], eye[1], eye[2]);
+    }
+  }
+
   setTime(t: number) {
     this.use();
     if (this.unifTime !== -1) {
       gl.uniform1f(this.unifTime, t);
+    }
+  }
+
+  setSeaState(n: number) {
+    this.use();
+    if (this.unifSeaState !== -1) {
+      gl.uniform1i(this.unifSeaState, n);
+    }
+  }
+
+  setWindDirection(d: number) {
+    this.use();
+    if (this.unifWindDir !== -1) {
+      gl.uniform1f(this.unifWindDir, d);
     }
   }
 
@@ -117,6 +177,12 @@ class ShaderProgram {
       gl.uniformMatrix4fv(this.unifViewProj, false, vp);
     }
   }
+  setViewProjInvMatrix(vp: mat4) {
+    this.use();
+    if (this.unifViewProjInv !== -1) {
+      gl.uniformMatrix4fv(this.unifViewProjInv, false, vp);
+    }
+  }
 
   setGeometryColor(color: vec4) {
     this.use();
@@ -148,6 +214,11 @@ class ShaderProgram {
       gl.vertexAttribPointer(this.attrBcCoord, 3, gl.FLOAT, false, 0, 0);
     }
 
+    if (this.attrUvCoord != -1 && d.bindUvCoord()) {
+      gl.enableVertexAttribArray(this.attrUvCoord);
+      gl.vertexAttribPointer(this.attrUvCoord, 2, gl.FLOAT, false, 0, 0);
+    }
+
     d.bindIdx();
     gl.drawElements(d.drawMode(), d.elemCount(), gl.UNSIGNED_INT, 0);
 
@@ -155,6 +226,7 @@ class ShaderProgram {
     if (this.attrNor != -1) gl.disableVertexAttribArray(this.attrNor);
     if (this.attrCol != -1) gl.disableVertexAttribArray(this.attrCol);
     if (this.attrBcCoord != -1) gl.disableVertexAttribArray(this.attrBcCoord);
+    if (this.attrUvCoord != -1) gl.disableVertexAttribArray(this.attrUvCoord);
   }
 };
 

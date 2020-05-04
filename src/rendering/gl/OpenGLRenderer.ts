@@ -33,6 +33,16 @@ class OpenGLRenderer {
     prog.setViewProjMatrix(viewProj);
     prog.setGeometryColor(color);
 
+    let viewMat: mat4 = camera.viewMatrix;
+    viewMat[12] = 0.0;
+    viewMat[13] = 0.0;
+    viewMat[14] = 0.0;
+    mat4.multiply(viewProj, camera.projectionMatrix, viewMat);
+    mat4.invert(viewProj, viewProj);
+    prog.setViewProjInvMatrix(viewProj);
+
+    prog.setEye(camera.controls.eye);
+
     for (let drawable of drawables) {
       prog.draw(drawable);
     }

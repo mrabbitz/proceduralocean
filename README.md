@@ -4,6 +4,8 @@ Mike Rabbitz (mrabbitz)
 ## Live Demo
 https://mrabbitz.github.io/proceduralocean/
 
+Note: The Skybox might not show up on initial load, so refresh the page as needed.
+
 ## Citations
 ### Radial Grid Mesh:
 https://developer.nvidia.com/gpugems/gpugems2/part-ii-shading-lighting-and-shadows/chapter-18-using-vertex-texture-displacement

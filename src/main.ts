@@ -13,30 +13,38 @@ import Cube from './geometry/Cube';
 // Define an object with application parameters and button callbacks
 // This will be referred to by dat.GUI's functions that add GUI elements.
 const controls = {
-  tesselations: 5,
-  'Load Scene': loadScene, // A function pointer, essentially
-  Wireframe: false,
+  'Skybox Intensity': 1.0,
   'Sea State': 1,
-  'Wind Direction': -30.0,
+  'Wave Speed': 1.0,
+  'Wind Direction': 30.0,
+  Rings: 300,
+  RingPoints: 600,
+  Wireframe: false,
+  'Shading Mode' : 1,
+  'Fog Intensity' : 0.05,
+  'Sight Distance' : 5.0
 };
 
 let time: number = 0.0;
 
-let icosphere: Icosphere;
-let square: Square;
-let prevTesselations: number = 5;
+let prevSky: number = 1.0;
+let prevState: number = 1;
+let prevWave: number = 1.0;
+let prevDir: number = 30.0;
+let prevRings: number = 300;
+let prevRingPoints: number = 600;
+let prevWire: boolean = false;
+let prevMode: number = 1;
+let prevFog: number = 0.05;
+let prevSight: number = 5.0;
 
 let ocean: Ocean;
 
 let cube: Cube;
 
 function loadScene() {
-  icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
-  icosphere.create();
-  square = new Square(vec3.fromValues(0, 0, 0));
-  square.create();
 
-  ocean = new Ocean();
+  ocean = new Ocean(controls.Rings, controls.RingPoints);
   ocean.create();
 
   cube = new Cube(vec3.fromValues(0, 0, 0));
@@ -55,11 +63,20 @@ function main() {
 
   // Add controls to the gui
   const gui = new DAT.GUI();
-  gui.add(controls, 'tesselations', 0, 8).step(1);
-  gui.add(controls, 'Load Scene');
-  gui.add(controls, 'Wireframe');
-  gui.add(controls, 'Sea State', 1, 6).step(1);
-  gui.add(controls, 'Wind Direction', -180, 180);
+  var f0 = gui.addFolder('Lighting');
+  var f1 = gui.addFolder('Ocean');
+  var f2 = gui.addFolder('Fog');
+  var f3 = gui.addFolder('Mesh');
+  f0.add(controls, 'Skybox Intensity', 0.01, 1.0);
+  f1.add(controls, 'Sea State', 1, 6).step(1);
+  f1.add(controls, 'Wave Speed', 0.01, 4.0);
+  f1.add(controls, 'Wind Direction', -180, 180);
+  f3.add(controls, 'Rings', 0, 1000).step(1);
+  f3.add(controls, 'RingPoints', 0, 800).step(1);
+  f3.add(controls, 'Wireframe');
+  f1.add(controls, 'Shading Mode', 1, 3).step(1);
+  f2.add(controls, 'Fog Intensity', 0.05, 1.0);
+  f2.add(controls, 'Sight Distance', 3, 10).step(1);
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -74,7 +91,7 @@ function main() {
   // Initial call to load scene
   loadScene();
 
-  const camera = new Camera(vec3.fromValues(0, 0, 5), vec3.fromValues(0, 0, 0));
+  const camera = new Camera(vec3.fromValues(5, 2, -1), vec3.fromValues(0, 2, 0));
 
   const renderer = new OpenGLRenderer(canvas);
   renderer.setClearColor(0.2, 0.2, 0.2, 1);
@@ -95,49 +112,84 @@ function main() {
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/ocean-frag.glsl')),
   ]);
 
+  oceanShaders.setSkyboxIntensity(controls["Skybox Intensity"]);
+  oceanShaders.setSeaState(controls["Sea State"]);
+  oceanShaders.setWaveSpeed(controls["Wave Speed"]);
+  oceanShaders.setWindDirection(controls["Wind Direction"]);
+  oceanShaders.setNumRings(controls.Rings);
+  oceanShaders.setWidthWireframe(1.0);
+  oceanShaders.setShadingMode(controls["Shading Mode"]);
+  oceanShaders.setFogIntensity(controls["Fog Intensity"]);
+  oceanShaders.setFogSight(controls["Sight Distance"]);
+  oceanShaders.setCubeMap(cube);
+
+  flat.setSkyboxIntensity(controls["Skybox Intensity"]);
+  flat.setFogIntensity(controls["Fog Intensity"]);
+  flat.setCubeMap(cube);
+
   // This function will be called every frame
   function tick() {
     camera.update();
     stats.begin();
-    lambert.setTime(time);
-    flat.setTime(time);
     oceanShaders.setTime(time++);
-    if (controls.Wireframe)
-    {
-      oceanShaders.setWidthWireframe(0.006);
-    }
-    else
-    {
-      oceanShaders.setWidthWireframe(1.0);
-    }
-    oceanShaders.setSeaState(controls["Sea State"]);
-    oceanShaders.setWindDirection(controls["Wind Direction"]);
 
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
-    if(controls.tesselations != prevTesselations)
-    {
-      prevTesselations = controls.tesselations;
-      icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, prevTesselations);
-      icosphere.create();
+
+    if (controls["Skybox Intensity"] != prevSky) {
+      prevSky = controls["Skybox Intensity"];
+      oceanShaders.setSkyboxIntensity(prevSky);
+      flat.setSkyboxIntensity(prevSky);
     }
-    // renderer.render(camera, lambert, [
-    //   icosphere,
-    //   // square,
-    // ]);
-    // renderer.render(camera, flat, [
-    //   ocean
-    // ]);
-    //oceanShaders.setTextureMap(ocean.texture, ocean.texWidth, ocean.texHeight);
+    if (controls["Sea State"] != prevState) {
+      prevState = controls["Sea State"];
+      oceanShaders.setSeaState(prevState);
+    }
+    if (controls["Wave Speed"] != prevWave) {
+      prevWave = controls["Wave Speed"];
+      oceanShaders.setWaveSpeed(prevWave);
+    }
+    if (controls["Wind Direction"] != prevDir) {
+      prevDir = controls["Wind Direction"];
+      oceanShaders.setWindDirection(prevDir);
+    }
+    if((controls.Rings != prevRings) || (controls.RingPoints != prevRingPoints)) {
+      prevRings = controls.Rings;
+      prevRingPoints = controls.RingPoints;
+      ocean = new Ocean(controls.Rings, controls.RingPoints);
+      ocean.create();
+      oceanShaders.setNumRings(prevRings);
+    }
+    if (controls.Wireframe != prevWire) {
+      prevWire = controls.Wireframe;
+      if (prevWire) {
+        oceanShaders.setWidthWireframe(0.006);
+      }
+      else {
+        oceanShaders.setWidthWireframe(1.0);
+      }
+    }
+    if(controls["Shading Mode"] != prevMode) {
+      prevMode = controls["Shading Mode"];
+      oceanShaders.setShadingMode(prevMode);
+    }
+    if(controls["Fog Intensity"] != prevFog) {
+      prevFog = controls["Fog Intensity"];
+      oceanShaders.setFogIntensity(prevFog);
+      flat.setFogIntensity(prevFog);
+    }
+    if(controls["Sight Distance"] != prevSight) {
+      prevSight = controls["Sight Distance"];
+      oceanShaders.setFogSight(prevSight);
+    }
+
     gl.depthFunc(gl.LESS);  // use the default depth test
-    oceanShaders.setCubeMap(cube);
     renderer.render(camera, oceanShaders, [
       ocean
     ]);
 
     // let our quad pass the depth test at 1.0
     gl.depthFunc(gl.LEQUAL);
-    flat.setCubeMap(cube);
     renderer.render(camera, flat, [
       cube
     ]);

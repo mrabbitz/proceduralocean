@@ -40,6 +40,12 @@ class ShaderProgram {
   unifWindDir: WebGLUniformLocation;
   unifEye: WebGLUniformLocation;
   unifCubeMap: WebGLUniformLocation;
+  unifNumRings: WebGLUniformLocation;
+  unifWaveSpeed: WebGLUniformLocation;
+  unifSkyboxIntensity: WebGLUniformLocation;
+  unifShadingMode: WebGLUniformLocation;
+  unifFogIntensity: WebGLUniformLocation;
+  unifFogSight: WebGLUniformLocation;
 
   constructor(shaders: Array<Shader>) {
     this.prog = gl.createProgram();
@@ -69,6 +75,12 @@ class ShaderProgram {
     this.unifWindDir        = gl.getUniformLocation(this.prog, "u_WindDirection");
     this.unifEye            = gl.getUniformLocation(this.prog, "u_Eye");
     this.unifCubeMap        = gl.getUniformLocation(this.prog, "u_CubeMap");
+    this.unifNumRings       = gl.getUniformLocation(this.prog, "u_NumRings");
+    this.unifWaveSpeed      = gl.getUniformLocation(this.prog, "u_WaveSpeed");
+    this.unifSkyboxIntensity= gl.getUniformLocation(this.prog, "u_SkyboxIntensity");
+    this.unifShadingMode    = gl.getUniformLocation(this.prog, "u_ShadingMode");
+    this.unifFogIntensity   = gl.getUniformLocation(this.prog, "u_FogIntensity");
+    this.unifFogSight       = gl.getUniformLocation(this.prog, "u_FogSight");
 
   }
 
@@ -76,6 +88,48 @@ class ShaderProgram {
     if (activeProgram !== this.prog) {
       gl.useProgram(this.prog);
       activeProgram = this.prog;
+    }
+  }
+
+  setFogSight(n: number) {
+    this.use();
+    if (this.unifFogSight !== -1) {
+      gl.uniform1f(this.unifFogSight, n);
+    }
+  }
+
+  setFogIntensity(n: number) {
+    this.use();
+    if (this.unifFogIntensity !== -1) {
+      gl.uniform1f(this.unifFogIntensity, n);
+    }
+  }
+
+  setShadingMode(n: number) {
+    this.use();
+    if (this.unifShadingMode !== -1) {
+      gl.uniform1i(this.unifShadingMode, n);
+    }
+  }
+
+  setSkyboxIntensity(n: number) {
+    this.use();
+    if (this.unifSkyboxIntensity !== -1) {
+      gl.uniform1f(this.unifSkyboxIntensity, n);
+    }
+  }
+
+  setWaveSpeed(n: number) {
+    this.use();
+    if (this.unifWaveSpeed !== -1) {
+      gl.uniform1f(this.unifWaveSpeed, n);
+    }
+  }
+
+  setNumRings(n: number) {
+    this.use();
+    if (this.unifNumRings !== -1) {
+      gl.uniform1f(this.unifNumRings, n);
     }
   }
 

@@ -18,7 +18,8 @@ class Camera {
     this.controls = CameraControls(document.getElementById('canvas'), {
       eye: position,
       center: target,
-      up: vec3.fromValues(0.0, 1.0, 0.0)
+      up: vec3.fromValues(0.0, 1.0, 0.0),
+      mode: 'turntable'
     });
     vec3.add(this.target, this.position, this.direction);
     mat4.lookAt(this.viewMatrix, this.controls.eye, this.controls.center, this.controls.up);

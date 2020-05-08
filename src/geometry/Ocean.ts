@@ -9,7 +9,6 @@ class Ocean extends Drawable {
   colors: Float32Array;
   barycentricCoords: Float32Array;
 
-  numVertices: number;
   nRings: number;
   nRingPnts: number;
   nTris: number;
@@ -19,12 +18,11 @@ class Ocean extends Drawable {
   texWidth: number;
   texHeight: number;
 
-  constructor() {
+  constructor(numRings: number, numRingPoints: number) {
     super(); // Call the constructor of the super class. This is required.
 
-    this.numVertices = 36;
-    this.nRings = 30;
-    this.nRingPnts = 80;
+    this.nRings = numRings;
+    this.nRingPnts = numRingPoints;
     this.nTris = (this.nRings - 1) * this.nRingPnts * 2;
     this.nVerts = this.nTris * 3;
   }
@@ -44,7 +42,7 @@ class Ocean extends Drawable {
 //           console.log(dX + " " + j+1 + " " + dZ);
           //this.positions.push(vec3(dX, j+1, dZ));  //  m_pVB[j*384+i] = SiPoint3(R0*dX, R0*dY,  j);
           positionsArray.push(dX);
-          positionsArray.push(j+1);
+          positionsArray.push(j);
           positionsArray.push(dZ);
           positionsArray.push(1.0);
 
